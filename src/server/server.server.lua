@@ -8,7 +8,7 @@ local NotificationService = require(ServerScriptService.Services.NotificationSer
 local AutocompleteSearchService = require(ServerScriptService.Services.AutocompleteSearchService)
 
 AutocompleteSearchService.InitTree(game.Workspace.Name, game.Workspace) -- for testing purposes
-print("Results of search " .. AutocompleteSearchService.Search("Workspace", "P")) -- for testing purposes
+print(AutocompleteSearchService.Search("Workspace", "P")) -- for testing purposes
 
 Players.PlayerAdded:Connect(function(player)
 	PlayersDataService:OnPlayerAdded(player)
