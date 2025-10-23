@@ -77,14 +77,22 @@ return {
 	end,
 	["Adding a new child to the initializated folder"] = function(skip)
 		local folder = createTestFolder()
-		AutocompleteSearchService.InitTree("Fruits", folder)
-
-		local newChild = Instance.new("Part")
+		local newChild = Instance.new("BoolValue")
 		newChild.Name = "Avocado"
 		newChild.Parent = folder
 
-		local result = AutocompleteSearchService.Search("Fruits", "Avo")
-		this(#result).will.equal(1)
+		AutocompleteSearchService.InitTree("Fruits", folder)
+
+		local before = AutocompleteSearchService.Search("Fruits", "Avo")
+
+		local newChild = Instance.new("BoolValue")
+		newChild.Name = "Avocado"
+		newChild.Parent = folder
+
+		task.wait(0.1)
+		local after = AutocompleteSearchService.Search("Fruits", "Avo")
+		print(#before, #after)
+		this(#after).will.equal(#before + 1)
 		folder:Destroy()
 		AutocompleteSearchService.RemoveTree("Fruits")
 	end,
@@ -94,6 +102,7 @@ return {
 
 		folder:FindFirstChild("Apple"):Destroy()
 
+		task.wait(0.1)
 		local result = AutocompleteSearchService.Search("Fruits", "App")
 		this(#result).will.equal(0)
 		folder:Destroy()
