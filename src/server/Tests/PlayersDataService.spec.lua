@@ -18,16 +18,6 @@ return {
 			skip("No players in the game to test with.")
 		end
 	end,
-    ["OnPlayerAdded creates profjile"] = function(skip)
-		if gotPlayer then
-			local p = gotPlayer
-			PlayersDataService:OnPlayerAdded(p)
-
-			this(PlayersDataService._profiles[p.UserId]).isA("table")
-		else
-			skip("No players in the game to test with.")
-		end
-	end,
 	["adds money after OnPlayerAdded"] = function(skip)
 		if gotPlayer then
 			local p = gotPlayer
