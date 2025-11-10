@@ -152,6 +152,7 @@ function NotificationService:ToPlayer(player, text) end
 -- @param text string Текст повідомлення
 function NotificationService:ToTeam(team, text) end
 
+
 --- Широкомовне повідомлення всім гравцям на сервері.
 -- @param text string Текст повідомлення
 function NotificationService:Broadcast(text) end
