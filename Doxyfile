@@ -1,0 +1,29 @@
+PROJECT_NAME           = "Civil-County"
+OUTPUT_DIRECTORY       = build/docs
+GENERATE_HTML          = YES
+RECURSIVE              = YES
+EXTRACT_ALL            = YES
+QUIET                  = YES
+WARN_IF_UNDOCUMENTED   = NO
+
+INPUT                  = src README.md
+
+FILE_PATTERNS          = *.lua *.luau *.md
+
+EXTENSION_MAPPING      = lua=C++ luau=C++
+
+OPTIMIZE_OUTPUT_FOR_C  = YES
+
+INPUT_FILTER           = "sed -e s/^---/\\/\\/\\//"
+
+MARKDOWN_SUPPORT       = YES
+USE_MDFILE_AS_MAINPAGE = README.md
+
+GENERATE_TREEVIEW      = YES
+HTML_OUTPUT            = html
+
+ALIASES                += "luaclass=@class"
+ALIASES                += "luafunc=@fn"
+
+OUTPUT_DIRECTORY = build/docs
+HTML_OUTPUT      = html
