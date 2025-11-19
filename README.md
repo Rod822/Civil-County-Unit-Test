@@ -1,12 +1,14 @@
 # Civil-County
+Civil-County — це Roblox-досвід на Lua/Luau, сфокусований на детермінованому керуванні даними гравців, структурованій логіці робіт/фракцій, надійних сповіщеннях і сервісі пошуку за префіксом, який можна повторно використати в будь-якій серверній системі.
+
 ## Огляд
-- Дані гравця поділено між `PersistentData` (хмарні значення, наприклад валюта) і `SessionData` (тимчасові атрибути на кшталт поточної роботи або бонусу). Клас `Profile` зберігає обидва записи для кожного користувача Roblox.
-- Автоматизацію на сервері реалізовано у вигляді сервісів із каталогу `src/server/Services`: `PlayersDataService`, `JobService`, `NotificationService`, `AutocompleteSearchService`.
-- Тести розташовані в `src/server/Tests` і виконуються `BoatTest` через `src/server/RunTests.server.lua`.
-- Документація у стилі Doxygen/JavaDoc генерується за допомогою `Doxyfile` та воркфлоу `.github/workflows/docs.yml`.
+- Дані гравця поділено між `PersistentData` (хмарні значення, наприклад валюта) і `SessionData` (тимчасові атрибути на кшталт поточної роботи чи бонусу). Клас `Profile` зберігає обидва записи.
+- Серверна автоматизація реалізована як сервіси з `src/server/Services`: `PlayersDataService`, `JobService`, `NotificationService`, `AutocompleteSearchService`.
+- Тести розташовані у `src/server/Tests` та виконуються `BoatTest` через `src/server/RunTests.server.lua`.
+- Документація у стилі Doxygen/JavaDoc генерується за допомогою `Doxyfile`, GitHub Pages і скрипта `scripts/generate-docs.sh`.
 
 ## Збірка та запуск
-1. Встановіть інструменти, зазначені в `aftman.toml`:
+1. Встановіть інструменти з `aftman.toml`:
    ```bash
    aftman install
    ```
@@ -15,77 +17,61 @@
    rojo build -o "Civil-County.rbxlx"
    ```
 3. Відкрийте `Civil-County.rbxlx` у Roblox Studio.
-4. Запустіть live sync-сервер у корені репозиторію:
+4. Запустіть live sync у корені репозиторію:
    ```bash
    rojo serve
    ```
-5. Проводьте плейтести в Studio. Скрипти з `ServerScriptService/Services` та `ServerScriptService/RunTests.server.lua` автоматично підключать модулі, описані нижче.
+5. Проводьте плейтести в Studio; скрипти з `ServerScriptService/Services` і `ServerScriptService/RunTests.server.lua` підключаться автоматично.
+
+## Структура репозиторію
+- `src/client` – клієнтські скрипти та UI (не деталізовано в цьому документі).
+- `src/server/Services` – авторитетні ігрові сервіси.
+- `src/server/Tests` – специфікації BoatTest та хелпери (напр., `player.luau`).
+- `src/server/RunTests.server.lua` – точка входу для BoatTest на сервері.
+- `src/shared/Classes` – спільні класи даних (`Profile`, `PersistentData`, `SessionData`, `TrieNode`, `TrieTreeRecord`).
+- `scripts/generate-docs.sh` – зручний скрипт для генерації Doxygen з будь-якої директорії.
+- `Doxyfile` – конфігурація Doxygen.
+- `.github/workflows/docs.yml` – CI, що збирає та публікує документацію на GitHub Pages.
 
 ## Модель даних
 ### Profile
-`Profile` визначає, як сервіси отримують доступ до стану гравця. Під час створення він ініціалізує два записи:
-- `persistent`: екземпляр `PersistentData`, заповнений значеннями з Roblox DataStore. Базово нові гравці отримують 200 одиниць ігрової валюти.
-- `session`: екземпляр `SessionData`, що зберігає тимчасові атрибути (`job`, `paycheckBonus` тощо).
+Поєднує `PersistentData` (значення з DataStore, базово 200 одиниць валюти) і `SessionData` (атрибути активної сесії – `job`, `paycheckBonus`).
 
 ### PersistentData
-`PersistentData` відповідає за значення, які мають пережити перезапуск сервера:
-- `Money` – ціла валюта, що зберігається в DataStore `"PlayerData"`. Усі зміни балансу проходять через `PlayersDataService:AddMoney` або `PlayersDataService:RemoveMoney`.
-
-Конструктор перевіряє числові типи та повертається до дефолтів у разі пошкоджених даних із DataStore.
+Зберігає довготривалі значення (поки лише `Money`). Усі зміни балансу виконуються через `PlayersDataService:AddMoney`, `PlayersDataService:RemoveMoney`.
 
 ### SessionData
-`SessionData` містить інформацію, яка безпечно відкидається після виходу гравця:
-- `job` – ідентифікатор роботи, що відповідає ключам у `JobService.Jobs`.
-- `paycheckBonus` – додатковий бонус до наступної виплати.
-
-Значення за замовчуванням клонуються для кожного профілю, аби уникнути спільного стану.
+Тимчасові значення, що скидаються при виході (`job`, `paycheckBonus`). Унікальні копії створюються для кожного профілю, аби уникнути спільного стану.
 
 ## Серверні сервіси
 ### PlayersDataService
-Обов’язки:
-- Завантажувати профілі в `OnPlayerAdded`, створювати `leaderstats` і зберігати об’єкт `Profile` у словнику `_profiles`, де ключем є `UserId`.
-- Зберігати `profile.persistent` у DataStore в `OnPlayerRemoving`, журналюючи помилки без переривання гри.
-- Керувати балансом `Money` через `AddMoney`, `RemoveMoney` та `SetData`. `JobService` і `NotificationService` покладаються на ці методи замість прямого доступу до `Profile`.
-
-Основні API:
-- `PlayersDataService:OnPlayerAdded(player)` – ініціалізація профілю й Roblox `leaderstats`.
-- `PlayersDataService:OnPlayerRemoving(player)` – запис даних назад до DataStore.
-- `PlayersDataService:AddMoney(player, amount)` / `RemoveMoney(player, amount)` – синхронізують `leaderstats` і запобігають овердрафту.
-- `PlayersDataService:SetData(player, key, value)` – оновлює відомі ключі `persistent` чи `session`, попереджаючи про невідомі поля.
+Відповідає за створення профілю та `leaderstats`, синхронізацію DataStore (методи `OnPlayerAdded`, `OnPlayerRemoving`) та безпечну роботу з балансом (`AddMoney`, `RemoveMoney`, `SetData`).
 
 ### JobService
-Обов’язки:
-- Підтримувати канонічний перелік робіт (`JobService.Jobs`) із метаданими `teamName` та `basePay`.
-- Призначати гравця до конкретного `Team` через `assignJob`, зберігати назву роботи в `PlayersDataService` і видавати / вилучати службові інструменти.
-- Виконувати контрольовані звільнення (`fireFromJob`), повертаючи гравця до команди `Civilian` і вилучаючи спорядження.
-- Розраховувати виплати в `paycheck`, додаючи `basePay` та `SessionData.paycheckBonus`, передавати транзакцію в `PlayersDataService` й надсилати сповіщення через `NotificationService:Paycheck`.
-
-Кожний метод перевіряє наявність роботи, команди та профілю до зміни стану. Клонування інструментів обмежується вмістом відповідного об’єкта `Team`.
+Зберігає канонічний перелік робіт (`Jobs`), призначає гравців до команд (`assignJob`), звільняє їх (`fireFromJob`), видає/знімає службові інструменти та виконує виплату (`paycheck`, що враховує `SessionData.paycheckBonus` і звертається до `NotificationService:Paycheck`).
 
 ### NotificationService
-Обов’язки:
-- Гарантувати існування `RemoteEvent` `ReplicatedStorage.NotifyRE`, який використовується для всіх сповіщень.
-- Надсилати персональні повідомлення через `SendTo(player, text, title?, duration?)`.
-- Надсилати повідомлення учасникам роботи через `SendToJob(jobName, text, title?, duration?)`, шукаючи користувачів у `PlayersDataService`.
-- Транслювати широкомовні повідомлення всім гравцям через `Broadcast(text, title?, duration?)`.
-- Формувати структуровані виплати через `Paycheck(player, base, bonus, total, jobName)` для повторного використання в `JobService`.
-
-Кожне сповіщення містить узгоджений payload (title, text, duration, `kind`) перед відправкою клієнту, що спрощує єдину реалізацію UI.
+Гарантує наявність `ReplicatedStorage.NotifyRE` і забезпечує надсилання повідомлень гравцю (`SendTo`), команді (`SendToJob`), всьому серверу (`Broadcast`) та форматованих повідомлень про зарплату (`Paycheck`).
 
 ### AutocompleteSearchService
-Обов’язки:
-- Підтримувати кілька дерев пошуку (`TrieTreeRecord`), що ідентифікуються людиночитними назвами (`InitTree(name, folder)`).
-- Слідкувати за подіями `ChildAdded` і `ChildRemoved`, автоматично додаючи або прибираючи об’єкти з дерева й індексу.
-- Виконувати фільтрований пошук через `Search(name, prefix, limit?)`, повертаючи екземпляри Roblox з відповідним префіксом (імена нормалізуються).
-- Вивільняти ресурси методом `RemoveTree(name)` шляхом відключення RBXScriptConnection и очищення кешу.
+Створює/підтримує кілька trie (`InitTree`, `RemoveTree`), слідкує за `ChildAdded/ChildRemoved` на заданих папках і виконує пошук за префіксом (`Search`). Використовує `TrieTreeRecord`, який зберігає індекс normalized-імен.
 
-Сервіс використовується в UX-сценаріях пошуку / автозаповнення, де потрібні швидкі запити по папках `Workspace`. Пошук нечутливий до регістру, оскільки `TrieTreeRecord` зберігає імена в нижньому регістрі.
+## Тестування
+- Тести знаходяться у `src/server/Tests`, використовують пакет `BoatTest` з `ReplicatedStorage.Packages`.
+- `src/server/RunTests.server.lua` автоматично запускає BoatTest для каталогу `ServerScriptService.Tests`.
+- Для локального прогони: запускайте `rojo serve`, відкривайте проект у Studio, додавайте хоча б одного тестового гравця, після чого перевіряйте вікно Output.
 
-## Тестування та QA
-- Автотести лежать у `src/server/Tests` і використовують `BoatTest` — бібліотеку BDD-асертів, яка постачається в `ReplicatedStorage.Packages`.
-- `src/server/RunTests.server.lua` запускається разом із досвідом і реєструє каталог `ServerScriptService.Tests`, тому будь-який файл `.spec.lua[u]` у цій директорії буде виконано.
-- Щоб прогнати тести локально:
-  1. Запустіть `rojo serve` і відкрийте place-file в Roblox Studio.
-  2. Забезпечте наявність хоча б одного тестового гравця (Studio Test Client) – тести `PlayersDataService` залежать від entries у `Players`.
-  3. Перевірте вікно Output для підсумків і помилок BoatTest.
-- Щоб розширити покриття, створюйте нові spec-файли, що підключають потрібний сервіс, і реєструйте сценарії через `BoatTest.this`.
+## CI та деплой документації
+- GitHub Actions (`.github/workflows/docs.yml`) збирає документацію на `ubuntu-latest`: встановлює Doxygen, виконує скрипт, завантажує артефакт і деплоїть його на GitHub Pages (`actions/deploy-pages@v4`).
+- Workflow тригериться на `push` до `main` або `feature/docs-ci`, а також вручну через `workflow_dispatch`.
+
+## Генерація API-документації
+1. Додайте Doxygen/LuaDoc-коментарі (`@brief`, `@param`, `@return`, `@example`, `@luafunc` тощо) до сервісів і класів.
+2. Використайте скрипт, який гарантує запуск з кореня й створення `build/docs`:
+   ```bash
+   ./scripts/generate-docs.sh
+   ```
+3. Відкрийте `build/docs/html/index.html`.
+4. CI-пайплайн завантажить ці файли на GitHub Pages після `git push`.
+
+Завдяки цьому кожна частина серверної логіки описана через відповідний сервіс, а документація доступна локально і через GitHub Pages.
