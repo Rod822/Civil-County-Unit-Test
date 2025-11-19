@@ -4,6 +4,8 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local PlayersDataService = require(ServerScriptService.Services.PlayersDataService)
 
+--- @class NotificationService
+--- @brief Розсилає системні повідомлення гравцям, роботам і всьому серверу.
 local NotificationService = {}
 NotificationService.__index = NotificationService
 
@@ -25,6 +27,10 @@ local function dispatchTo(player: Player, payload: { [string]: any })
 	getRemote():FireClient(player, payload)
 end
 
+--- @brief Широкомовне повідомлення всім гравцям на сервері.
+--- @param text string Основний текст.
+--- @param title string|nil Заголовок (Notice за замовчуванням).
+--- @param duration number|nil Тривалість показу в секундах.
 function NotificationService:Broadcast(text: string, title: string?, duration: number?)
 	for _, plr in ipairs(Players:GetPlayers()) do
 		dispatchTo(plr, {
@@ -36,6 +42,11 @@ function NotificationService:Broadcast(text: string, title: string?, duration: n
 	end
 end
 
+--- @brief Надсилає повідомлення конкретному гравцю.
+--- @param player Player Отримувач.
+--- @param text string Текст повідомлення.
+--- @param title string|nil Заголовок (Message за замовчуванням).
+--- @param duration number|nil Тривалість показу.
 function NotificationService:SendTo(player: Player, text: string, title: string?, duration: number?)
 	dispatchTo(player, {
 		title = title or "Message",
@@ -45,6 +56,11 @@ function NotificationService:SendTo(player: Player, text: string, title: string?
 	})
 end
 
+--- @brief Розсилає повідомлення всім гравцям із вказаною роботою.
+--- @param jobName string Значення `SessionData.job`.
+--- @param text string Основний текст.
+--- @param title string|nil Заголовок повідомлення.
+--- @param duration number|nil Тривалість показу.
 function NotificationService:SendToJob(jobName: string, text: string, title: string?, duration: number?)
 	for _, plr in ipairs(Players:GetPlayers()) do
 		local profile = PlayersDataService._profiles[plr.UserId]
@@ -59,6 +75,12 @@ function NotificationService:SendToJob(jobName: string, text: string, title: str
 	end
 end
 
+--- @brief Надсилає деталізоване повідомлення про нарахування зарплати.
+--- @param player Player Отримувач.
+--- @param base number Базова сума виплати.
+--- @param bonus number Додатковий бонус.
+--- @param total number Підсумкова виплата.
+--- @param jobName string Робота, за яку іде виплата.
 function NotificationService:Paycheck(player: Player, base: number, bonus: number, total: number, jobName: string)
 	local title = "Paycheck"
 	local parts = {}
