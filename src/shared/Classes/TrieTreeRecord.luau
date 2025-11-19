@@ -1,8 +1,9 @@
--- TreeRecord.luau
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Classes = ReplicatedStorage:WaitForChild("Classes")
 local Node = require(Classes:WaitForChild("TrieNode"))
 
+--- @class TrieTreeRecord
+--- @brief Зберігає trie, папку-джерело, індекс і зв'язки для автоматичного пошуку Roblox-екземплярів.
 local TreeRecord = {}
 TreeRecord.__index = TreeRecord
 
@@ -18,6 +19,9 @@ local function normalizeName(s: string): string
 	return string.lower(s)
 end
 
+--- @brief Створює запис дерева для конкретної папки.
+--- @param folder Instance Папка Roblox, чиї діти індексуються.
+--- @return TrieTreeRecord Порожня структура без підключених елементів.
 function TreeRecord.new(folder: Instance): TreeRecord
 	local self: TreeRecord = setmetatable({}, TreeRecord)
 	self.root = Node.new()
@@ -27,6 +31,8 @@ function TreeRecord.new(folder: Instance): TreeRecord
 	return self
 end
 
+--- @brief Додає Instance до деревa й індексу.
+--- @param inst Instance Об'єкт, який буде знайдено під час пошуку.
 function TreeRecord:AddInstance(inst: Instance)
 	local word = normalizeName(inst.Name)
 	local bucket = self.index[word]
@@ -43,6 +49,8 @@ function TreeRecord:AddInstance(inst: Instance)
 	table.insert(bucket, inst)
 end
 
+--- @brief Видаляє Instance із дерева; чистить вузли без дітей.
+--- @param inst Instance Об'єкт, який видаляється з індексу.
 function TreeRecord:RemoveInstance(inst: Instance)
 	local word = normalizeName(inst.Name)
 	local bucket = self.index[word]
@@ -86,6 +94,10 @@ function TreeRecord:RemoveInstance(inst: Instance)
 	end
 end
 
+--- @brief Виконує пошук усіх екземплярів із заданим префіксом.
+--- @param prefix string Введений користувачем префікс.
+--- @param limit number|nil Максимальна кількість результатів.
+--- @return {Instance} Відсортований список збігів.
 function TreeRecord:Search(prefix: string, limit: number?): { Instance }
 	local p = normalizeName(prefix or "")
 	if p == "" then

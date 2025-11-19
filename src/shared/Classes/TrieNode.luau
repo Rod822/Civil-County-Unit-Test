@@ -1,3 +1,5 @@
+--- @class TrieNode
+--- @brief Внутрішній вузол префіксного дерева з довільною кількістю дітей.
 local Node = {}
 Node.__index = Node
 
@@ -6,6 +8,7 @@ export type Node = {
 	isEnd: boolean,
 }
 
+--- @brief Створює порожній вузол trie.
 function Node.new(): Node
 	local self = setmetatable({}, Node)
 	self.children = {}
@@ -13,6 +16,8 @@ function Node.new(): Node
 	return self
 end
 
+--- @brief Вставляє слово до дерева, створюючи проміжні вузли.
+--- @param word string Нормалізоване слово (наприклад, у нижньому регістрі).
 function Node:Insert(word: string)
 	local node: Node = self
 	for i = 1, #word do
@@ -25,6 +30,9 @@ function Node:Insert(word: string)
 	node.isEnd = true
 end
 
+--- @brief Повертає вузол, що відповідає префіксу.
+--- @param prefix string Ключ для пошуку.
+--- @return TrieNode|nil Вузол кінця префікса або nil.
 function Node:Find(prefix: string): Node?
 	local node: Node? = self
 	for i = 1, #prefix do
@@ -54,6 +62,10 @@ local function collect(node: Node?, prefix: string, out: { string }, limit: numb
 	end
 end
 
+--- @brief Збирає слова, що починаються з prefix, у вказаний масив.
+--- @param prefix string Частина слова для з'єднання.
+--- @param out table Буфер результатів.
+--- @param limit number|nil Максимальна кількість записів.
 function Node:Collect(prefix: string, out: { string }, limit: number?)
 	collect(self, prefix, out, limit)
 end

@@ -1,14 +1,18 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Classes = ReplicatedStorage:WaitForChild("Classes")
 
-local TrieNode = require(Classes:WaitForChild("TrieNode"))
 local TrieTreeRecord = require(Classes:WaitForChild("TrieTreeRecord"))
 
+--- @class AutocompleteSearchService
+--- @brief Підтримує множинні trie для пошуку об'єктів за префіксом.
 local AutocompleteSearchService = {}
 
 local Trees = {}
 
-function AutocompleteSearchService.InitTree(name: string, folder: Instance)
+--- @brief Ініціалізує trie для вибраної папки.
+--- @param name string Унікальне ім'я дерева.
+--- @param folder Instance Папка з екземплярами, які треба індексувати.
+function AutocompleteSearchService.InitTree(name, folder)
 	assert(typeof(name) == "string" and name ~= "", "InitTree: name must be non-empty string")
 	assert(typeof(folder) == "Instance", "InitTree: folder must be an Instance")
 
@@ -32,7 +36,12 @@ function AutocompleteSearchService.InitTree(name: string, folder: Instance)
 	Trees[name] = tree
 end
 
-function AutocompleteSearchService.Search(name: string, prefix: string, limit: number?): { Instance }
+--- @brief Виконує пошук у вибраному дереві.
+--- @param name string Назва дерева, створеного через InitTree.
+--- @param prefix string Префікс для пошуку.
+--- @param limit number|nil Максимальна кількість результатів.
+--- @return {Instance} Масив екземплярів Roblox.
+function AutocompleteSearchService.Search(name, prefix, limit)
 	local tree = Trees[name]
 	if not tree then
 		return {}
@@ -40,7 +49,10 @@ function AutocompleteSearchService.Search(name: string, prefix: string, limit: n
 	return tree:Search(prefix, limit)
 end
 
-function AutocompleteSearchService.RemoveTree(name: string): boolean
+--- @brief Видаляє trie й відключає всі зв'язки.
+--- @param name string Назва дерева.
+--- @return boolean true, якщо дерево існувало й було видалено.
+function AutocompleteSearchService.RemoveTree(name)
 	local tree = Trees[name]
 	if not tree then
 		return false

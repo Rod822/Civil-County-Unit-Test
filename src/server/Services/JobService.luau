@@ -5,6 +5,8 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local PlayersDataService = require(ServerScriptService:WaitForChild("Services"):WaitForChild("PlayersDataService"))
 local NotificationsService = require(ServerScriptService:WaitForChild("Services"):WaitForChild("NotificationService"))
 
+--- @class JobService
+--- @brief Керує роботами, призначенням команд і виплатою зарплат.
 local JobServise = {}
 JobServise.__index = JobServise
 
@@ -27,6 +29,7 @@ JobServise.Jobs = {
 	},
 }
 
+--- @brief Клонує службові інструменти відповідного Team до Backpack.
 local function giveServiceTools(player)
 	local toolsFolder = player.Team
 	for _, item in pairs(toolsFolder:GetChildren()) do
@@ -37,6 +40,7 @@ local function giveServiceTools(player)
 	end
 end
 
+--- @brief Вилучає службові інструменти, які належать поточній команді.
 local function removeServiceTools(player)
 	for _, item in pairs(player.Backpack:GetChildren()) do
 		if item:IsA("Tool") then
@@ -56,6 +60,10 @@ Players.PlayerAdded:Connect(function(player)
 	end)
 end)
 
+--- @brief Призначає гравця на роботу і оновлює його профіль.
+--- @param player Player Гравець, якого призначають.
+--- @param jobName string Ключ у JobService.Jobs.
+--- @return boolean true, якщо все пройшло успішно.
 function JobServise:assignJob(player: Player, jobName: string)
 	local job = self.Jobs[jobName]
 	if not job then
@@ -76,6 +84,10 @@ function JobServise:assignJob(player: Player, jobName: string)
 	return true
 end
 
+--- @brief Звільняє гравця з конкретної роботи та переводить у Civilian.
+--- @param player Player Цільовий гравець.
+--- @param jobName string Назва роботи, з якої звільняють.
+--- @return boolean true, якщо гравця звільнено.
 function JobServise:fireFromJob(player: Player, jobName: string)
 	local profile = PlayersDataService._profiles[player.UserId]
 	if not profile then
@@ -107,6 +119,8 @@ function JobServise:fireFromJob(player: Player, jobName: string)
 	return true
 end
 
+--- @brief Нараховує зарплату гравцю відповідно до його профілю.
+--- @param player Player Отримувач зарплати.
 function JobServise:paycheck(player: Player)
 	local profile = PlayersDataService._profiles[player.UserId]
 	if not profile then
