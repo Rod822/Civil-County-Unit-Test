@@ -1,197 +1,91 @@
 # Civil-County
-Це гра розроблена на роблокс платформі використовуючи Lua та Luau. 
+## Огляд
+- Дані гравця поділено між `PersistentData` (хмарні значення, наприклад валюта) і `SessionData` (тимчасові атрибути на кшталт поточної роботи або бонусу). Клас `Profile` зберігає обидва записи для кожного користувача Roblox.
+- Автоматизацію на сервері реалізовано у вигляді сервісів із каталогу `src/server/Services`: `PlayersDataService`, `JobService`, `NotificationService`, `AutocompleteSearchService`.
+- Тести розташовані в `src/server/Tests` і виконуються `BoatTest` через `src/server/RunTests.server.lua`.
+- Документація у стилі Doxygen/JavaDoc генерується за допомогою `Doxyfile` та воркфлоу `.github/workflows/docs.yml`.
 
-## Збірка та Запуск
-To build the place from scratch, use:
+## Збірка та запуск
+1. Встановіть інструменти, зазначені в `aftman.toml`:
+   ```bash
+   aftman install
+   ```
+2. Зберіть place-файл Roblox за допомогою Rojo:
+   ```bash
+   rojo build -o "Civil-County.rbxlx"
+   ```
+3. Відкрийте `Civil-County.rbxlx` у Roblox Studio.
+4. Запустіть live sync-сервер у корені репозиторію:
+   ```bash
+   rojo serve
+   ```
+5. Проводьте плейтести в Studio. Скрипти з `ServerScriptService/Services` та `ServerScriptService/RunTests.server.lua` автоматично підключать модулі, описані нижче.
 
-```bash
-rojo build -o "Civil-County.rbxlx"
-```
+## Модель даних
+### Profile
+`Profile` визначає, як сервіси отримують доступ до стану гравця. Під час створення він ініціалізує два записи:
+- `persistent`: екземпляр `PersistentData`, заповнений значеннями з Roblox DataStore. Базово нові гравці отримують 200 одиниць ігрової валюти.
+- `session`: екземпляр `SessionData`, що зберігає тимчасові атрибути (`job`, `paycheckBonus` тощо).
 
-Next, open `Civil-County.rbxlx` in Roblox Studio and start the Rojo server:
+### PersistentData
+`PersistentData` відповідає за значення, які мають пережити перезапуск сервера:
+- `Money` – ціла валюта, що зберігається в DataStore `"PlayerData"`. Усі зміни балансу проходять через `PlayersDataService:AddMoney` або `PlayersDataService:RemoveMoney`.
 
-```bash
-rojo serve
-```
+Конструктор перевіряє числові типи та повертається до дефолтів у разі пошкоджених даних із DataStore.
 
-For more help, check out [the Rojo documentation](https://rojo.space/docs).
+### SessionData
+`SessionData` містить інформацію, яка безпечно відкидається після виходу гравця:
+- `job` – ідентифікатор роботи, що відповідає ключам у `JobService.Jobs`.
+- `paycheckBonus` – додатковий бонус до наступної виплати.
 
-## Documentation
+Значення за замовчуванням клонуються для кожного профілю, аби уникнути спільного стану.
 
-- Зберігання данних користувачів `Profile`
-	- Зберігання тимчасової інформації про ігрову сесію `SessionData`
-		- Зберігання інформації про команду ігрока
-		- Зберігання інформації про бонус до наступної зароботної плати за виконнання завдань в команді
-	- Зберігання постіної інформації в хмарній базі данних `PersistentData`
-		- Зберігання балансу ігрової валюти ігрока на хмарній базі данних (Roblox DataStore Service)
-		- Безпечні методи змінення балансу ігрока (додавання, віднімання)
-		- Відображення публічного списоку балансів ігроків (ledeaderstats), які знаходяться на одному сервері 
-- Фракції з поділом на окремі команди
-	- Виплата регулярної заробітної плати
-	- Система бонусів до заробітної плати за виконнання завдань фракції
-	- Видача службових предметів (наприклад зброя, наручники)
-	- Безпечні методи прийняття на роботу та звільнення з роботи
-	- Публічний список який ігрок в якій команді (ledeaderstats)
-- Надсилання системних повідомлень
-	- Відправлення системного повідомлення до вибраного гравця про отримання заробітної плати
-	- Відправлення системного повідомлення до всіх учасників вибраної команди
-	- Відправлення системного повідомлення до всіх гравців на сервері
-- Сервіс реалізації створення префіксального дерева з папки з обʼєктами та пошук
-	- Методи створення та видалення префіксального дерева з папки з обʼєктами
-	- Автоматично оновлює trie при додаванні або видаленні обʼєктів з привʼязанної папки
-	- Виповнює пошук елементів по префіксу по раніше створеному префіксальному дереву
-- Додати коментарі у форматі Doxygen/JavaDoc до основних класів і методів
-	- Використати теги `@brief`, `@param`, `@return`, `@throws`, `@example`
+## Серверні сервіси
+### PlayersDataService
+Обов’язки:
+- Завантажувати профілі в `OnPlayerAdded`, створювати `leaderstats` і зберігати об’єкт `Profile` у словнику `_profiles`, де ключем є `UserId`.
+- Зберігати `profile.persistent` у DataStore в `OnPlayerRemoving`, журналюючи помилки без переривання гри.
+- Керувати балансом `Money` через `AddMoney`, `RemoveMoney` та `SetData`. `JobService` і `NotificationService` покладаються на ці методи замість прямого доступу до `Profile`.
 
-## API Docs — Doxygen/JavaDoc‑style comments (Lua/Luau)
+Основні API:
+- `PlayersDataService:OnPlayerAdded(player)` – ініціалізація профілю й Roblox `leaderstats`.
+- `PlayersDataService:OnPlayerRemoving(player)` – запис даних назад до DataStore.
+- `PlayersDataService:AddMoney(player, amount)` / `RemoveMoney(player, amount)` – синхронізують `leaderstats` і запобігають овердрафту.
+- `PlayersDataService:SetData(player, key, value)` – оновлює відомі ключі `persistent` чи `session`, попереджаючи про невідомі поля.
 
-> Нижче — зразки коментарів у форматі Doxygen/JavaDoc для основних сервісів. Вони сумісні з LuaDoc/EmmyLua та більшістю генераторів документації (Doxygen з фільтром для Lua, LDoc, Sumneko/EmmyLua у VS Code).
+### JobService
+Обов’язки:
+- Підтримувати канонічний перелік робіт (`JobService.Jobs`) із метаданими `teamName` та `basePay`.
+- Призначати гравця до конкретного `Team` через `assignJob`, зберігати назву роботи в `PlayersDataService` і видавати / вилучати службові інструменти.
+- Виконувати контрольовані звільнення (`fireFromJob`), повертаючи гравця до команди `Civilian` і вилучаючи спорядження.
+- Розраховувати виплати в `paycheck`, додаючи `basePay` та `SessionData.paycheckBonus`, передавати транзакцію в `PlayersDataService` й надсилати сповіщення через `NotificationService:Paycheck`.
 
-### Profile / SessionData / PersistentData
-```lua
---- @class Profile
---- @brief Профіль гравця: об'єднує тимчасові (SessionData) та постійні (PersistentData) дані.
---- @field player Player # Роблокс-гравець, власник профілю
---- @field session SessionData # Тимчасові дані активної сесії
---- @field persistent PersistentData # Постійні дані з DataStore
-local Profile = {}
+Кожний метод перевіряє наявність роботи, команди та профілю до зміни стану. Клонування інструментів обмежується вмістом відповідного об’єкта `Team`.
 
---- Створює профіль для гравця.
--- @param player Player Гравець, для якого створюється профіль
--- @return Profile Новий екземпляр профілю
--- @example
--- local profile = Profile.new(player)
-function Profile.new(player) end
+### NotificationService
+Обов’язки:
+- Гарантувати існування `RemoteEvent` `ReplicatedStorage.NotifyRE`, який використовується для всіх сповіщень.
+- Надсилати персональні повідомлення через `SendTo(player, text, title?, duration?)`.
+- Надсилати повідомлення учасникам роботи через `SendToJob(jobName, text, title?, duration?)`, шукаючи користувачів у `PlayersDataService`.
+- Транслювати широкомовні повідомлення всім гравцям через `Broadcast(text, title?, duration?)`.
+- Формувати структуровані виплати через `Paycheck(player, base, bonus, total, jobName)` для повторного використання в `JobService`.
 
---- @brief Поточний баланс ігрової валюти.
--- @return number Баланс у валюті гри
-function Profile:GetBalance() end
+Кожне сповіщення містить узгоджений payload (title, text, duration, `kind`) перед відправкою клієнту, що спрощує єдину реалізацію UI.
 
---- @brief Безпечно змінює баланс.
--- @param delta number Сума зміни (може бути від'ємною)
--- @throws "InsufficientFunds" Якщо спроба зняти більше, ніж доступно
--- @return number Нове значення балансу
--- @example
--- profile:AdjustBalance(+100)   -- нарахувати 100
--- profile:AdjustBalance(-50)    -- списати 50
-function Profile:AdjustBalance(delta) end
+### AutocompleteSearchService
+Обов’язки:
+- Підтримувати кілька дерев пошуку (`TrieTreeRecord`), що ідентифікуються людиночитними назвами (`InitTree(name, folder)`).
+- Слідкувати за подіями `ChildAdded` і `ChildRemoved`, автоматично додаючи або прибираючи об’єкти з дерева й індексу.
+- Виконувати фільтрований пошук через `Search(name, prefix, limit?)`, повертаючи екземпляри Roblox з відповідним префіксом (імена нормалізуються).
+- Вивільняти ресурси методом `RemoveTree(name)` шляхом відключення RBXScriptConnection и очищення кешу.
 
---- @class SessionData
---- @brief Тимчасові дані сесії: команда гравця, бонуси тощо.
---- @field team string|nil Поточна команда (наприклад, "Police")
---- @field salaryBonus number|nil Коефіцієнт/бонус до зарплати
-local SessionData = {}
+Сервіс використовується в UX-сценаріях пошуку / автозаповнення, де потрібні швидкі запити по папках `Workspace`. Пошук нечутливий до регістру, оскільки `TrieTreeRecord` зберігає імена в нижньому регістрі.
 
---- Встановлює команду гравця.
--- @param team string Ідентифікатор команди
--- @example
--- session:SetTeam("Police")
-function SessionData:SetTeam(team) end
-
---- @class PersistentData
---- @brief Постійні дані, що зберігаються у DataStore (баланс тощо).
---- @field cash number Поточний баланс
-local PersistentData = {}
-
---- Завантажує дані з DataStore.
--- @param userId number Roblox UserId
--- @return PersistentData Дані користувача
--- @throws "DataStoreError" У разі помилки доступу до хмари
-function PersistentData.Load(userId) end
-
---- Зберігає дані у DataStore.
--- @param userId number Roblox UserId
--- @param data PersistentData Дані для збереження
--- @throws "DataStoreError" У разі помилки доступу до хмари
-function PersistentData.Save(userId, data) end
-```
-
-### FactionService (фракції, зарплата, кадрові операції)
-```lua
---- @class FactionService
---- @brief Керує фракціями/командами, нарахуванням зарплати та кадрами.
-local FactionService = {}
-
---- Приймає гравця на роботу у фракцію.
--- @param player Player Об'єкт гравця
--- @param faction string Назва фракції ("Police", "EMS", тощо)
--- @throws "AlreadyEmployed" Якщо гравець уже в іншій фракції
--- @return boolean true, якщо успішно
--- @example
--- FactionService:Hire(player, "Police")
-function FactionService:Hire(player, faction) end
-
---- Звільняє гравця з фракції.
--- @param player Player Об'єкт гравця
--- @return boolean true, якщо успішно
-function FactionService:Fire(player) end
-
---- Нараховує зарплату всім членам фракції з урахуванням бонусів.
--- @param faction string Назва фракції
--- @return number Кількість успішних виплат
--- @example
--- local paid = FactionService:Payroll("Police")
-function FactionService:Payroll(faction) end
-```
-
-### NotificationService (системні повідомлення)
-```lua
---- @class NotificationService
---- @brief Відправка системних повідомлень гравцю, команді або всьому серверу.
-local NotificationService = {}
-
---- Надсилає повідомлення конкретному гравцю.
--- @param player Player Отримувач
--- @param text string Текст повідомлення
--- @example
--- NotificationService:ToPlayer(player, "Вам нараховано зарплату: $250")
-function NotificationService:ToPlayer(player, text) end
-
---- Надсилає повідомлення всім у команді.
--- @param team string Ідентифікатор команди
--- @param text string Текст повідомлення
-function NotificationService:ToTeam(team, text) end
-
-
---- Широкомовне повідомлення всім гравцям на сервері.
--- @param text string Текст повідомлення
-function NotificationService:Broadcast(text) end
-```
-
-### AutocompleteSearchService (префіксальне дерево / trie)
-```lua
---- @class AutocompleteSearchService
---- @brief Створює та підтримує trie з вмісту папки; виконує пошук за префіксом.
-local AutocompleteSearchService = {}
-
---- Ініціалізує trie із вмісту папки.
--- @param name string Унікальне ім'я дерева
--- @param folder Instance Папка з об'єктами (їхні імена індексуються)
--- @return boolean true, якщо ініціалізація виконана
--- @throws "AlreadyExists" Якщо дерево з таким ім'ям уже існує
--- @example
--- local ok = AutocompleteSearchService.InitTree("Fruits", workspace.Fruits)
-function AutocompleteSearchService.InitTree(name, folder) end
-
---- Видаляє раніше створене trie.
--- @param name string Ім'я дерева
--- @return boolean true, якщо видалено
-function AutocompleteSearchService.RemoveTree(name) end
-
---- Пошук елементів за префіксом у вказаному trie.
--- @param name string Ім'я дерева
--- @param prefix string Пошуковий префікс (регістрозалежність визначається реалізацією)
--- @param limit number|nil Необов'язковий ліміт кількості результатів
--- @return Instance[] Список знайдених об'єктів
--- @example
--- local results = AutocompleteSearchService.Query("Fruits", "Ap", 10)
-function AutocompleteSearchService.Query(name, prefix, limit) end
-```
-
-### Приклад наскрізного сценарію
-```lua
--- @example Нарахування зарплати з повідомленням
-local profile = Profile.new(player)
-profile:AdjustBalance(+250)
-NotificationService:ToPlayer(player, "Вам нараховано зарплату: $250")
-```
+## Тестування та QA
+- Автотести лежать у `src/server/Tests` і використовують `BoatTest` — бібліотеку BDD-асертів, яка постачається в `ReplicatedStorage.Packages`.
+- `src/server/RunTests.server.lua` запускається разом із досвідом і реєструє каталог `ServerScriptService.Tests`, тому будь-який файл `.spec.lua[u]` у цій директорії буде виконано.
+- Щоб прогнати тести локально:
+  1. Запустіть `rojo serve` і відкрийте place-file в Roblox Studio.
+  2. Забезпечте наявність хоча б одного тестового гравця (Studio Test Client) – тести `PlayersDataService` залежать від entries у `Players`.
+  3. Перевірте вікно Output для підсумків і помилок BoatTest.
+- Щоб розширити покриття, створюйте нові spec-файли, що підключають потрібний сервіс, і реєструйте сценарії через `BoatTest.this`.
