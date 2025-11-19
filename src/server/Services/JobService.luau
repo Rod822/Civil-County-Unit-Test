@@ -6,7 +6,7 @@ local PlayersDataService = require(ServerScriptService:WaitForChild("Services"):
 local NotificationsService = require(ServerScriptService:WaitForChild("Services"):WaitForChild("NotificationService"))
 
 --- @class JobService
---- @brief Керує роботами, призначенням команд і виплатою зарплат.
+--- @brief Керує роботами, призначенням команд і виплатою зарпла
 local JobServise = {}
 JobServise.__index = JobServise
 
