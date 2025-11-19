@@ -6,11 +6,15 @@ local Classes = ReplicatedStorage:WaitForChild("Classes")
 
 local Profile = require(Classes.Profile)
 
+--- @class PlayersDataService
+--- @brief Створює профілі гравців, синхронізує DataStore та leaderstats.
 local PlayersDataService = {}
 PlayersDataService.__index = PlayersDataService
 
 PlayersDataService._profiles = {}
 
+--- @brief Обробляє вхід гравця, створюючи профіль і leaderstats.
+--- @param player Player Roblox-гравець.
 function PlayersDataService:OnPlayerAdded(player: Player)
 	local LoadedData: { Money: number }? = nil
 	local success, result = pcall(function()
@@ -36,6 +40,8 @@ function PlayersDataService:OnPlayerAdded(player: Player)
 	Money.Parent = leaderstats
 end
 
+--- @brief Зберігає персистентні дані гравця перед виходом.
+--- @param player Player Roblox-гравець.
 function PlayersDataService:OnPlayerRemoving(player: Player)
 	local profile = self._profiles[player.UserId]
 	if not profile then
@@ -52,6 +58,9 @@ function PlayersDataService:OnPlayerRemoving(player: Player)
 	self._profiles[player.UserId] = nil
 end
 
+--- @brief Додає гравцю кошти та оновлює leaderstats.
+--- @param player Player Цільовий гравець.
+--- @param amount number Сума для додавання.
 function PlayersDataService:AddMoney(player: Player, amount: number)
 	local profile = self._profiles[player.UserId]
 	if not profile then
@@ -67,6 +76,10 @@ function PlayersDataService:AddMoney(player: Player, amount: number)
 	end
 end
 
+--- @brief Прагне списати кошти, якщо їх достатньо.
+--- @param player Player Цільовий гравець.
+--- @param amount number Сума для зняття.
+--- @return boolean? false, якщо грошей недостатньо; nil, якщо профіль не знайдено.
 function PlayersDataService:RemoveMoney(player: Player, amount: number): boolean?
 	local profile = self._profiles[player.UserId]
 	if not profile then
@@ -86,6 +99,10 @@ function PlayersDataService:RemoveMoney(player: Player, amount: number): boolean
 	return true -- Successfully removed money
 end
 
+--- @brief Оновлює значення в persistent або session частині профілю.
+--- @param player Player Цільовий гравець.
+--- @param key string Ім'я поля.
+--- @param value any Нове значення.
 function PlayersDataService:SetData(player: Player, key: string, value: any)
 	local profile = self._profiles[player.UserId]
 	if not profile then

@@ -1,3 +1,5 @@
+--- @class SessionData
+--- @brief Тимчасовий стан гравця (робота, paycheckBonus), який скидається після виходу.
 local SessionData = {}
 SessionData.__index = SessionData
 
@@ -11,6 +13,8 @@ local DEFAULTS = {
 	job = "Civilian",
 }
 
+--- @brief Створює новий об'єкт SessionData з дефолтними значеннями.
+--- @return SessionData Незалежний запис для конкретного профілю.
 function SessionData.new(): SessionData
 	local obj = table.clone(DEFAULTS)
 	return setmetatable(obj, SessionData)
